@@ -22,7 +22,7 @@ export default function LoginPage() {
     try {
       const res = await postJSON<ApiOk>('/api/auth/magic-link/request', {
         email: email.trim(),
-        purpose: 'login',
+        purpose: 'signup',
       });
       if (res?.ok) {
         setStatus('success');
