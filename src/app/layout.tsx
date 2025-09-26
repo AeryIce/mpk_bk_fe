@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Metadata } from "next";
 import "./globals.css";
 
@@ -17,11 +18,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Header kaca gradasi oranye */}
         <header className="bk-header">
           <nav className="container-max flex items-center gap-6 p-3 text-white">
-            <a href="/" className="font-extrabold text-lg tracking-wide hover:text-brand-gold transition">
+            <Link href="/" className="font-extrabold text-lg tracking-wide hover:text-brand-gold transition">
               BK
-            </a>
-            <a href="/login" className="hover:text-brand-gold transition">Login</a>
-            <a href="/dashboard" className="hover:text-brand-gold transition">Dashboard</a>
+            </Link>
+            <Link href="/login" className="hover:text-brand-gold transition">Login</Link>
+            <Link href="/dashboard" className="hover:text-brand-gold transition">Dashboard</Link>
             {/* <a href="/scan" className="hover:text-brand-gold transition">Scan</a> */}
           </nav>
         </header>
