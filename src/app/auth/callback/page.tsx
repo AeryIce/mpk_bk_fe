@@ -12,7 +12,11 @@ function CallbackInner() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = params.get('token'); // token dari query ?token=...
+    let token = params.get('token') || '';
+    if (token.includes('/consume/')) {
+      token = token.split('/consume/').pop() || '';
+    }
+
     if (!token) {
       setError('Token tidak ditemukan.');
       setLoading(false);
@@ -21,16 +25,25 @@ function CallbackInner() {
 
     async function consume() {
       try {
-        const res = await postJSON<{ ok: boolean; token: string; user: unknown }>(
+        const res = await postJSON<Record<string, unknown>>(
           '/api/auth/magic-link/consume',
           { token }
         );
-        if (res?.ok && res.token) {
-          // Simpan PAT di localStorage
-          localStorage.setItem('auth_token', res.token);
+
+        // === DEBUG LOG ===
+        console.log('[DEBUG][consume response]', res);
+
+        // cari kemungkinan field token
+        const pat =
+          (res['token'] as string | undefined) ||
+          (res['plainTextToken'] as string | undefined) ||
+          (res['access_token'] as string | undefined);
+
+        if (res['ok'] && pat) {
+          localStorage.setItem('auth_token', pat);
           router.replace('/dashboard');
         } else {
-          setError('Token tidak valid atau sudah dipakai.');
+          setError('Respon tidak mengandung PAT. Lihat console log.');
         }
       } catch (err: unknown) {
         if (err instanceof HttpError) setError(err.message);
