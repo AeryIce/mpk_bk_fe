@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { NavBar } from "@/src/components/NavBar";
 
+type Role = "sponsor" | "admin" | "superadmin";
+
 export default function SettingsPage() {
   const [apiBase, setApiBase] = useState<string>(process.env.NEXT_PUBLIC_API_BASE_URL || "");
   const [magicExpiry, setMagicExpiry] = useState<number>(15);
-  const [defaultRole, setDefaultRole] = useState<"sponsor" | "admin" | "superadmin">("sponsor");
+  const [defaultRole, setDefaultRole] = useState<Role>("sponsor");
   const [notifEmail, setNotifEmail] = useState(true);
   const [notifWA, setNotifWA] = useState(true);
   const [saved, setSaved] = useState<string | null>(null);
@@ -51,7 +53,11 @@ export default function SettingsPage() {
           </label>
           <label className="block">
             <span className="text-xs font-medium text-slate-600">Default Role Pendaftar</span>
-            <select value={defaultRole} onChange={(e) => setDefaultRole(e.target.value as any)} className="mt-1 w-full rounded-xl border border-amber-300/60 bg-white/70 px-3 py-2 outline-none focus:ring-2 focus:ring-amber-400">
+            <select
+              value={defaultRole}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setDefaultRole(e.target.value as Role)}
+              className="mt-1 w-full rounded-xl border border-amber-300/60 bg-white/70 px-3 py-2 outline-none focus:ring-2 focus:ring-amber-400"
+            >
               <option value="sponsor">Sponsor (default)</option>
               <option value="admin">Admin</option>
               <option value="superadmin">Superadmin</option>

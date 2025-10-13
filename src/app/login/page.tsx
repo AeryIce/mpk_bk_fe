@@ -1,6 +1,7 @@
 // src/app/login/page.tsx
 "use client";
 import { useState } from "react";
+import Image from "next/image";
 
 type Mode = "login" | "register";
 
@@ -23,15 +24,17 @@ export default function LoginOrRegisterPage() {
   return (
     <div className="mx-auto max-w-6xl">
       <div className="card p-4 sm:p-6 lg:p-8">
-        {/* ⚓ Kunci tinggi di desktop supaya kiri gak goyang */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch lg:h-[620px]">
-          {/* LEFT — brand (tetap centering vertikal) */}
+          {/* LEFT — brand (stabil) */}
           <div className="brand-wrap rounded-3xl bg-white/70 backdrop-blur ring-1 ring-amber-200/60 shadow-sm p-6 lg:p-8 h-full flex">
             <div className="relative z-10 flex flex-col justify-center items-center text-center w-full">
               <div className="rounded-[20px] border border-amber-200/70 p-6 sm:p-8 w-full max-w-[520px]">
-                <img
+                <Image
                   src="/brand/LogoMPK50th.png"
                   alt="MPK-KAJ 50 Tahun"
+                  width={256}
+                  height={256}
+                  priority
                   className="w-64 h-auto drop-shadow-sm mx-auto"
                 />
                 <div className="mt-6 text-sm text-slate-600">
@@ -43,7 +46,7 @@ export default function LoginOrRegisterPage() {
             </div>
           </div>
 
-          {/* RIGHT — auth (tinggi penuh; animasi cuma di sini) */}
+          {/* RIGHT — auth (animasi di sini) */}
           <div className="rounded-3xl bg-white/80 backdrop-blur shadow-sm border border-white/60 p-5 sm:p-6 lg:p-8 h-full flex flex-col">
             <div className="flex items-start justify-between gap-3">
               <div className="pr-2">
@@ -58,8 +61,9 @@ export default function LoginOrRegisterPage() {
               </div>
               <div className="seg rounded-xl bg-white/90 shadow-inner border border-amber-200/60 flex-shrink-0">
                 <button
+                  type="button"
                   onClick={() => swap("login")}
-                  aria-selected={mode === "login"}
+                  aria-pressed={mode === "login"}
                   className={`h-10 px-3 sm:px-4 text-[13px] sm:text-sm font-medium transition ${
                     mode === "login" ? "bg-[color:var(--brand)] text-white" : "hover:bg-white text-slate-700"
                   }`}
@@ -67,8 +71,9 @@ export default function LoginOrRegisterPage() {
                   Masuk
                 </button>
                 <button
+                  type="button"
                   onClick={() => swap("register")}
-                  aria-selected={mode === "register"}
+                  aria-pressed={mode === "register"}
                   className={`h-10 px-3 sm:px-4 text-[13px] sm:text-sm font-medium transition ${
                     mode === "register" ? "bg-[color:var(--brand)] text-white" : "hover:bg-white text-slate-700"
                   }`}
@@ -79,7 +84,7 @@ export default function LoginOrRegisterPage() {
               </div>
             </div>
 
-            {/* 🛝 Slider area: fixed-height di dalam panel kanan */}
+            {/* SLIDER AREA */}
             <div className="relative mt-5 overflow-hidden flex-1 min-h-0">
               {/* LOGIN */}
               <form
@@ -109,7 +114,7 @@ export default function LoginOrRegisterPage() {
                 </div>
               </form>
 
-              {/* REGISTER (scroll internal kalau konten lebih tinggi) */}
+              {/* REGISTER */}
               <form
                 onSubmit={onSubmitRegister}
                 className={`absolute inset-0 w-full transition-transform duration-300 ease-out ${
