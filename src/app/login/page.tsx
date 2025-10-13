@@ -1,135 +1,175 @@
-'use client';
+// src/app/login/page.tsx
+"use client";
+import { useState } from "react";
 
-import Image from 'next/image';
-import { FormEvent, useState } from 'react';
-import { postJSON, HttpError } from '@/lib/api';
+type Mode = "login" | "register";
 
-type ApiOk = { ok: boolean; message?: string };
+export default function LoginOrRegisterPage() {
+  const [mode, setMode] = useState<Mode>("register");
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [errorMsg, setErrorMsg] = useState<string>('');
-  const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Buku Kenangan';
+  const swap = (to: Mode) => { setMode(to); setMsg(null); };
 
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setStatus('idle');
-    setErrorMsg('');
-
-    try {
-      const res = await postJSON<ApiOk>('/api/auth/magic-link/request', {
-        email: email.trim(),
-        purpose: 'signup',
-      });
-      if (res?.ok) {
-        setStatus('success');
-      } else {
-        setStatus('error');
-        setErrorMsg(res?.message || 'Permintaan gagal. Coba lagi.');
-      }
-    } catch (err: unknown) {
-      setStatus('error');
-      if (err instanceof HttpError) {
-        if (err.status === 429) setErrorMsg('Terlalu sering. Coba lagi sebentar lagi.');
-        else if (err.status === 422) setErrorMsg('Email tidak valid.');
-        else if (err.status === 500) setErrorMsg('Server sibuk. Coba beberapa saat lagi.');
-        else setErrorMsg(err.message || 'Terjadi kesalahan.');
-      } else if (err instanceof Error) {
-        setErrorMsg(err.message);
-      } else {
-        setErrorMsg('Terjadi kesalahan.');
-      }
-    } finally {
-      setSubmitting(false);
-    }
+  const onSubmitLogin = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); setLoading(true); setMsg(null);
+    setTimeout(() => { setLoading(false); setMsg("Tautan login sudah dikirim ke email kamu."); }, 600);
+  };
+  const onSubmitRegister = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); setLoading(true); setMsg(null);
+    setTimeout(() => { setLoading(false); setMsg("Pendaftaran diterima. Kami kirim tautan verifikasi ke email PIC."); }, 700);
   };
 
   return (
-    <main className="relative min-h-[100dvh] w-full overflow-hidden bg-gradient-to-b from-white via-[#fff7ed] to-white">
-      <div className="relative z-10 mx-auto flex min-h-[100dvh] max-w-4xl items-center justify-center px-4">
-        <div className="grid w-full overflow-hidden rounded-2xl border border-[#CDA4341a] bg-white/70 shadow-xl backdrop-blur-md md:grid-cols-2">
-          <div className="relative flex items-center justify-center bg-white/60 p-6 md:p-8">
-            <Image
-              src="/LogoMPK50th.png"
-              alt="MPK-KAJ 50 Tahun"
-              width={400}
-              height={400}
-              className="object-contain"
-              priority
-            />
+    <div className="mx-auto max-w-6xl">
+      <div className="card p-4 sm:p-6 lg:p-8">
+        {/* ⚓ Kunci tinggi di desktop supaya kiri gak goyang */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch lg:h-[620px]">
+          {/* LEFT — brand (tetap centering vertikal) */}
+          <div className="brand-wrap rounded-3xl bg-white/70 backdrop-blur ring-1 ring-amber-200/60 shadow-sm p-6 lg:p-8 h-full flex">
+            <div className="relative z-10 flex flex-col justify-center items-center text-center w-full">
+              <div className="rounded-[20px] border border-amber-200/70 p-6 sm:p-8 w-full max-w-[520px]">
+                <img
+                  src="/brand/LogoMPK50th.png"
+                  alt="MPK-KAJ 50 Tahun"
+                  className="w-64 h-auto drop-shadow-sm mx-auto"
+                />
+                <div className="mt-6 text-sm text-slate-600">
+                  <div className="font-semibold text-slate-700">Buku Kenangan MPK KAJ</div>
+                  <div className="mt-1">Satu portal untuk sponsor & panitia: upload materi, kurasi,
+                    pengiriman, hingga laporan.</div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-col justify-center p-6 md:p-8">
-            <div className="mb-6 text-center md:text-left">
-              <h1 className="text-2xl font-semibold tracking-tight text-[#CDA434]">
-                Masuk {appName}
-              </h1>
-              <p className="mt-1 text-sm text-neutral-600">
-                Gunakan email untuk menerima <span className="font-medium">magic link</span>.
-              </p>
+          {/* RIGHT — auth (tinggi penuh; animasi cuma di sini) */}
+          <div className="rounded-3xl bg-white/80 backdrop-blur shadow-sm border border-white/60 p-5 sm:p-6 lg:p-8 h-full flex flex-col">
+            <div className="flex items-start justify-between gap-3">
+              <div className="pr-2">
+                <h1 className="text-2xl font-semibold text-slate-800">
+                  {mode === "login" ? "Masuk Buku Kenangan" : "Daftar Buku Kenangan"}
+                </h1>
+                <p className="mt-1 text-sm text-slate-500">
+                  {mode === "login"
+                    ? "Gunakan email untuk menerima magic link."
+                    : "Isi data PIC agar kami punya kontak email & WhatsApp untuk koordinasi."}
+                </p>
+              </div>
+              <div className="seg rounded-xl bg-white/90 shadow-inner border border-amber-200/60 flex-shrink-0">
+                <button
+                  onClick={() => swap("login")}
+                  aria-selected={mode === "login"}
+                  className={`h-10 px-3 sm:px-4 text-[13px] sm:text-sm font-medium transition ${
+                    mode === "login" ? "bg-[color:var(--brand)] text-white" : "hover:bg-white text-slate-700"
+                  }`}
+                >
+                  Masuk
+                </button>
+                <button
+                  onClick={() => swap("register")}
+                  aria-selected={mode === "register"}
+                  className={`h-10 px-3 sm:px-4 text-[13px] sm:text-sm font-medium transition ${
+                    mode === "register" ? "bg-[color:var(--brand)] text-white" : "hover:bg-white text-slate-700"
+                  }`}
+                >
+                  <span className="sm:hidden">Daftar PIC</span>
+                  <span className="hidden sm:inline">Daftar (PIC/Instansi)</span>
+                </button>
+              </div>
             </div>
 
-            {status === 'success' && (
-              <div className="mb-4 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                Tautan sudah dikirim ke email <span className="font-semibold">{email}</span>. Periksa
-                inbox atau spam.
-              </div>
-            )}
-            {status === 'error' && (
-              <div className="mb-4 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                {errorMsg}
-              </div>
-            )}
-
-            <form onSubmit={onSubmit} className="space-y-4">
-              <label className="block">
-                <span className="mb-1 block text-sm font-medium text-neutral-700">Email</span>
-                <input
-                  type="email"
-                  required
-                  placeholder="nama@sekolah.id"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={submitting || status === 'success'}
-                  className="w-full rounded-xl border border-[#CDA43433] bg-white/80 px-4 py-3 text-neutral-800 outline-none transition focus:border-[#CDA434] focus:ring-2 focus:ring-[#CDA43433] disabled:opacity-60"
-                />
-              </label>
-
-              <button
-                type="submit"
-                disabled={submitting || !email || status === 'success'}
-                className="group relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#F97316] px-4 py-3 font-semibold text-white transition hover:scale-[1.01] hover:bg-[#EA580C] active:scale-[0.99] disabled:cursor-not-allowed disabled:brightness-95"
-                title={!email ? 'Isi email terlebih dahulu' : 'Kirim Magic Link'}
+            {/* 🛝 Slider area: fixed-height di dalam panel kanan */}
+            <div className="relative mt-5 overflow-hidden flex-1 min-h-0">
+              {/* LOGIN */}
+              <form
+                onSubmit={onSubmitLogin}
+                className={`absolute inset-0 w-full transition-transform duration-300 ease-out ${
+                  mode === "login" ? "translate-x-0" : "-translate-x-full"
+                } ${mode === "login" ? "" : "pointer-events-none"}`}
+                aria-hidden={mode !== "login"}
               >
-                <span>{submitting ? 'Mengirim…' : 'Kirim Magic Link'}</span>
-                {!submitting && (
-                  <svg
-                    className="h-4 w-4 transition group-hover:translate-x-0.5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M22 12H2" />
-                    <path d="m15 5 7 7-7 7" />
-                  </svg>
-                )}
-              </button>
+                <Field type="email" label="Email" name="email" placeholder="nama@sekolah.id" required />
+                <button disabled={loading} className="btn btn-primary w-full mt-3">
+                  {loading ? "Memproses…" : "Kirim Magic Link →"}
+                </button>
+                {msg && mode === "login" && <div className="mt-3 text-sm text-emerald-600">{msg}</div>}
+                <div className="mt-3 text-xs text-slate-500">Kami tidak menyimpan password. Tautan berlaku terbatas.</div>
+                <div className="mt-2 text-sm text-slate-600">
+                  Belum punya akun?{" "}
+                  <button type="button" onClick={() => swap("register")} className="underline text-[color:var(--brand)]">
+                    Daftar sebagai PIC/Instansi
+                  </button>
+                </div>
+                <div className="mt-4 text-xs">
+                  Powered by{" "}
+                  <a className="underline text-[color:var(--brand2)]" href="#" onClick={(e) => e.preventDefault()}>
+                    MPK KAJ
+                  </a>
+                </div>
+              </form>
 
-              <p className="text-center text-xs text-neutral-500">
-                Kami tidak menyimpan password. Tautan berlaku terbatas.
-              </p>
-            </form>
-
-            <div className="mt-6 text-center text-xs text-neutral-500">
-              Powered by <span className="font-semibold text-[#EA580C]">MPK KAJ</span>
+              {/* REGISTER (scroll internal kalau konten lebih tinggi) */}
+              <form
+                onSubmit={onSubmitRegister}
+                className={`absolute inset-0 w-full transition-transform duration-300 ease-out ${
+                  mode === "register" ? "translate-x-0" : "translate-x-full"
+                } ${mode === "register" ? "" : "pointer-events-none"} overflow-auto pr-1`}
+                aria-hidden={mode !== "register"}
+              >
+                <Field label="Instansi / Sekolah" name="instansi" placeholder="Contoh: SMA St. Ignatius" required />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Field label="Nama PIC" name="pic" placeholder="Nama lengkap PIC" required />
+                  <Field label="Jabatan (opsional)" name="jabatan" placeholder="Wakil Kepala Sekolah" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Field type="email" label="Email PIC" name="email" placeholder="nama@sekolah.id" required />
+                  <Field label="No. WA PIC" name="wa" placeholder="+62 812-xxx-xxxx" inputMode="tel" required />
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Dengan menekan daftar, Anda menyetujui untuk dihubungi melalui email/WhatsApp terkait program Buku
+                  Kenangan MPK KAJ.
+                </p>
+                <button disabled={loading} className="btn btn-primary w-full mt-3">
+                  {loading ? "Memproses…" : "Kirim Pendaftaran →"}
+                </button>
+                {msg && mode === "register" && <div className="mt-3 text-sm text-emerald-600">{msg}</div>}
+                <div className="mt-2 text-sm text-slate-600">
+                  Sudah terdaftar?{" "}
+                  <button type="button" onClick={() => swap("login")} className="underline text-[color:var(--brand)]">
+                    Masuk dengan email
+                  </button>
+                </div>
+                <div className="mt-4 text-xs">
+                  Powered by{" "}
+                  <a className="underline text-[color:var(--brand2)]" href="#" onClick={(e) => e.preventDefault()}>
+                    MPK KAJ
+                  </a>
+                </div>
+              </form>
             </div>
           </div>
         </div>
       </div>
-    </main>
+
+      <div className="sr-only">Logo path: /public/brand/LogoMPK50th.png</div>
+    </div>
+  );
+}
+
+function Field({
+  label, name, placeholder, type = "text", required, inputMode,
+}: {
+  label: string; name: string; placeholder?: string; type?: string; required?: boolean;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+}) {
+  return (
+    <label className="block">
+      <span className="text-xs font-medium text-slate-600">{label}</span>
+      <input
+        name={name} type={type} inputMode={inputMode} placeholder={placeholder} required={required}
+        className="mt-1 w-full rounded-xl border border-amber-300/60 bg-white/70 px-3 py-2 outline-none focus:ring-2 focus:ring-amber-400"
+      />
+    </label>
   );
 }

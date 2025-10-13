@@ -13,9 +13,7 @@ function CallbackInner() {
 
   useEffect(() => {
     let token = params.get('token') || '';
-    if (token.includes('/consume/')) {
-      token = token.split('/consume/').pop() || '';
-    }
+    if (token.includes('/consume/')) token = token.split('/consume/').pop() || '';
 
     if (!token) {
       setError('Token tidak ditemukan.');
@@ -23,27 +21,17 @@ function CallbackInner() {
       return;
     }
 
-    async function consume() {
+    (async () => {
       try {
-        const res = await postJSON<Record<string, unknown>>(
+        const res = await postJSON<{ ok: boolean; token?: string; user?: unknown }>(
           '/api/auth/magic-link/consume',
           { token }
         );
-
-        // === DEBUG LOG ===
-        console.log('[DEBUG][consume response]', res);
-
-        // cari kemungkinan field token
-        const pat =
-          (res['token'] as string | undefined) ||
-          (res['plainTextToken'] as string | undefined) ||
-          (res['access_token'] as string | undefined);
-
-        if (res['ok'] && pat) {
-          localStorage.setItem('auth_token', pat);
+        if (res?.ok && res.token) {
+          localStorage.setItem('auth_token', res.token);
           router.replace('/dashboard');
         } else {
-          setError('Respon tidak mengandung PAT. Lihat console log.');
+          setError('Respon tidak valid. Silakan minta tautan baru.');
         }
       } catch (err: unknown) {
         if (err instanceof HttpError) setError(err.message);
@@ -52,27 +40,11 @@ function CallbackInner() {
       } finally {
         setLoading(false);
       }
-    }
-
-    consume();
+    })();
   }, [params, router]);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[100dvh] items-center justify-center text-neutral-600">
-        Memproses tautan…
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-[100dvh] items-center justify-center text-rose-600">
-        {error}
-      </div>
-    );
-  }
-
+  if (loading) return <div className="flex min-h-[100dvh] items-center justify-center text-neutral-600">Memproses tautan…</div>;
+  if (error)   return <div className="flex min-h-[100dvh] items-center justify-center text-rose-600">{error}</div>;
   return null;
 }
 

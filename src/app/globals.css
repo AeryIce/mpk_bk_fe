@@ -1,60 +1,31 @@
+/* src/app/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ========= Brand tokens (pakai CSS variables) ========= */
-:root {
-  --brand-orange: #ea580c; /* orange-600 (lebih matang) */
-  --brand-amber:  #f59e0b; /* amber-500 */
-  --brand-caramel:#d97706; /* amber-600 */
-  --brand-gold:   #d4af37;
-}
+:root { --brand: #F97316; --brand2: #CDA434; }
 
-/* ========= Softer background: cream base + hint orange ========= */
-.bk-bg {
-  background-image:
-    /* glow putih lembut di atas */
-    radial-gradient(900px 520px at 50% -18%, rgba(255,255,255,.55), transparent 60%),
-    /* vignette hangat di bawah */
-    radial-gradient(1200px 900px at 50% 120%, rgba(48,33,0,.18), transparent 60%),
-    /* base cream gradient */
-    linear-gradient(180deg, #fff7ed 0%, #fff1e0 40%, #ffe8c7 100%);
-}
+/* Glass card */
+.card { @apply rounded-2xl bg-white/70 backdrop-blur shadow-sm border border-white/50; }
 
-/* Aksen oranye tipis dari bawah + soft light dari atas */
-.bk-accent {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
+/* Buttons */
+.btn { @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 font-medium transition active:scale-[.99]; }
+.btn-primary { @apply bg-[color:var(--brand)] text-white hover:bg-orange-600; }
+.btn-ghost { @apply bg-white/70 hover:bg-white; }
+
+/* Pills */
+.pill { @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium; }
+
+/* Soft glow belakang panel logo */
+.brand-wrap{position:relative;overflow:hidden}
+.brand-wrap::before{
+  content:"";position:absolute;inset:-20%;
   background:
-    radial-gradient(70% 60% at 50% 115%, color-mix(in oklab, var(--brand-orange) 12%, transparent), transparent 60%),
-    radial-gradient(80% 65% at 50% -10%, rgba(255,255,255,.25), transparent 55%);
-  mix-blend-mode: multiply;
+    radial-gradient(60% 60% at 20% 20%, rgba(253,186,116,.28), transparent 55%),
+    radial-gradient(60% 60% at 80% 80%, rgba(234,179,8,.22), transparent 55%);
+  filter: blur(30px); z-index:0;
 }
 
-/* ========= Header kaca tipis ========= */
-.bk-header {
-  @apply sticky top-0 z-20 backdrop-blur-md border-b;
-  background: linear-gradient(180deg, color-mix(in oklab, var(--brand-orange) 85%, transparent) 0%, color-mix(in oklab, var(--brand-amber) 75%, transparent) 100%);
-  border-color: rgba(255,255,255,.18);
-  color: white;
-}
-
-/* ========= Komponen ========= */
-@layer components {
-  .bk-card {
-    @apply rounded-2xl border shadow-[0_8px_24px_rgba(0,0,0,.12)];
-    background: rgba(255,255,255,.65);
-    border-color: rgba(255,255,255,.45);
-    backdrop-filter: blur(8px);
-  }
-  .bk-title {
-    @apply text-4xl md:text-5xl font-extrabold tracking-wide drop-shadow-sm;
-    color: var(--brand-gold);
-  }
-  .bk-lead { @apply text-lg text-slate-800/90; }
-  .container-max { @apply mx-auto max-w-5xl; }
-}
-
-/* ========= Helpers ========= */
-.text-brand { color: var(--brand-orange); }
+/* Segmented toggle container: jangan pangkas teks */
+.seg{display:inline-flex; gap:0}
+.seg button{white-space:nowrap}
