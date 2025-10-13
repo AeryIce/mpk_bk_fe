@@ -24,9 +24,10 @@ export default function LoginOrRegisterPage() {
   return (
     <div className="mx-auto max-w-6xl">
       <div className="card p-4 sm:p-6 lg:p-8">
+        {/* Di desktop kunci tinggi; di mobile auto */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch lg:h-[620px]">
-          {/* LEFT — brand (stabil) */}
-          <div className="brand-wrap rounded-3xl bg-white/70 backdrop-blur ring-1 ring-amber-200/60 shadow-sm p-6 lg:p-8 h-full flex">
+          {/* LEFT — brand */}
+          <div className="brand-wrap rounded-3xl bg-white/70 backdrop-blur ring-1 ring-amber-200/60 shadow-sm p-6 lg:p-8 flex">
             <div className="relative z-10 flex flex-col justify-center items-center text-center w-full">
               <div className="rounded-[20px] border border-amber-200/70 p-6 sm:p-8 w-full max-w-[520px]">
                 <Image
@@ -46,8 +47,8 @@ export default function LoginOrRegisterPage() {
             </div>
           </div>
 
-          {/* RIGHT — auth (animasi di sini) */}
-          <div className="rounded-3xl bg-white/80 backdrop-blur shadow-sm border border-white/60 p-5 sm:p-6 lg:p-8 h-full flex flex-col">
+          {/* RIGHT — auth (animasi aktif mulai md) */}
+          <div className="rounded-3xl bg-white/80 backdrop-blur shadow-sm border border-white/60 p-5 sm:p-6 lg:p-8 flex flex-col">
             <div className="flex items-start justify-between gap-3">
               <div className="pr-2">
                 <h1 className="text-2xl font-semibold text-slate-800">
@@ -84,14 +85,17 @@ export default function LoginOrRegisterPage() {
               </div>
             </div>
 
-            {/* SLIDER AREA */}
-            <div className="relative mt-5 overflow-hidden flex-1 min-h-0">
+            {/* SLIDER AREA
+               - Mobile: forms static (bukan absolute) -> pasti kelihatan
+               - ≥ md: forms absolute + slide transition */}
+            <div className="relative mt-5 md:overflow-hidden flex-1 min-h-[420px] sm:min-h-[460px] lg:min-h-0">
               {/* LOGIN */}
               <form
                 onSubmit={onSubmitLogin}
-                className={`absolute inset-0 w-full transition-transform duration-300 ease-out ${
-                  mode === "login" ? "translate-x-0" : "-translate-x-full"
-                } ${mode === "login" ? "" : "pointer-events-none"}`}
+                className={`${mode === "login" ? "" : "hidden"} 
+                            md:absolute md:inset-0 md:w-full md:transition-transform md:duration-300 md:ease-out
+                            ${mode === "login" ? "md:translate-x-0" : "md:-translate-x-full"}
+                            ${mode === "login" ? "" : "md:pointer-events-none"}`}
                 aria-hidden={mode !== "login"}
               >
                 <Field type="email" label="Email" name="email" placeholder="nama@sekolah.id" required />
@@ -117,9 +121,10 @@ export default function LoginOrRegisterPage() {
               {/* REGISTER */}
               <form
                 onSubmit={onSubmitRegister}
-                className={`absolute inset-0 w-full transition-transform duration-300 ease-out ${
-                  mode === "register" ? "translate-x-0" : "translate-x-full"
-                } ${mode === "register" ? "" : "pointer-events-none"} overflow-auto pr-1`}
+                className={`${mode === "register" ? "" : "hidden"} 
+                            md:absolute md:inset-0 md:w-full md:transition-transform md:duration-300 md:ease-out
+                            ${mode === "register" ? "md:translate-x-0" : "md:translate-x-full"}
+                            ${mode === "register" ? "" : "md:pointer-events-none"} md:overflow-auto md:pr-1`}
                 aria-hidden={mode !== "register"}
               >
                 <Field label="Instansi / Sekolah" name="instansi" placeholder="Contoh: SMA St. Ignatius" required />
