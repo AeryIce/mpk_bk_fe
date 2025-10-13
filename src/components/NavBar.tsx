@@ -12,7 +12,9 @@ const tabs = [
   { href: "/admin/logistics",  label: "Logistik" },
   { href: "/scan",             label: "Scan" },            // scan tetap di root
   { href: "/admin/reports",    label: "Laporan" },
+  { href: "/admin/registrations", label: "Registrasi" },
   { href: "/admin/settings",   label: "Pengaturan" },
+
 ];
 
 export function NavBar() {
