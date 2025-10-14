@@ -1,8 +1,6 @@
-// src/components/AdminGate.tsx
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 
 type Role = "sponsor" | "admin" | "superadmin";
 
@@ -15,12 +13,10 @@ const DEFAULT_ALLOW: Role[] = ["admin", "superadmin"];
 
 export default function AdminGate({ children, allow = DEFAULT_ALLOW }: Props) {
   const [ok, setOk] = useState<boolean | null>(null);
-  const router = useRouter();
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
 
-    // kalau nggak ada token, anggap tidak berwenang (tanpa redirect)
     if (!token) {
       setOk(false);
       return;
@@ -46,7 +42,7 @@ export default function AdminGate({ children, allow = DEFAULT_ALLOW }: Props) {
     return (
       <div className="p-6">
         Tidak berwenang.{" "}
-        <a className="underline text-[color:var(--brand)]" href="/register">
+        <a className="underline text-[color:var(--brand)]" href="/pendaftaran">
           Ke Form Publik
         </a>
       </div>

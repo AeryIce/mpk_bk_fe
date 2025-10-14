@@ -57,6 +57,32 @@ const seed: Registration[] = [
   },
 ];
 
+// ---- API types + helpers (menghindari any) ----
+type ApiReg = {
+  id: number | string;
+  instansi?: string;
+  pic?: string;
+  jabatan?: string | null;
+  email?: string;
+  wa?: string;
+  alamat?: string;
+  kelurahan?: string | null;
+  kecamatan?: string | null;
+  kota?: string;
+  provinsi?: string;
+  kodepos?: string | null;
+  catatan?: string | null;
+  created_at?: string;
+  lat?: number | string | null;
+  lng?: number | string | null;
+};
+
+function toNum(v: number | string | null | undefined): number | undefined {
+  if (v === null || v === undefined) return undefined;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 // ---- Helpers ----
 function toFullAddress(r: Registration) {
   const segs = [
@@ -118,9 +144,10 @@ export default function AdminRegistrationsPage() {
       try {
         const res = await fetch(url, { headers: { Accept: "application/json" } });
         if (!res.ok) throw new Error("bad");
-        const j = await res.json();
-        // DB shape: id:number, created_at:string, lat/lng optional
-        const mapped: Registration[] = (j.data as any[]).map((d) => ({
+        const j = (await res.json()) as { ok?: boolean; data?: ApiReg[] };
+        const raw: ApiReg[] = Array.isArray(j?.data) ? j.data : [];
+
+        const mapped: Registration[] = raw.map((d) => ({
           id: String(d.id),
           instansi: d.instansi ?? "",
           pic: d.pic ?? "",
@@ -135,8 +162,8 @@ export default function AdminRegistrationsPage() {
           kodepos: d.kodepos ?? "",
           catatan: d.catatan ?? "",
           createdAt: d.created_at ?? new Date().toISOString(),
-          lat: typeof d.lat === "number" ? d.lat : d.lat ? Number(d.lat) : undefined,
-          lng: typeof d.lng === "number" ? d.lng : d.lng ? Number(d.lng) : undefined,
+          lat: toNum(d.lat),
+          lng: toNum(d.lng),
         }));
         setRows(mapped);
       } catch {
@@ -145,7 +172,6 @@ export default function AdminRegistrationsPage() {
           const raw = localStorage.getItem("bk_registrations");
           if (raw) {
             const ls: Registration[] = JSON.parse(raw);
-            // gabung unik by instansi|email
             const map = new Map<string, Registration>();
             [...seed, ...ls].forEach((r) => map.set(`${r.instansi}|${r.email}`, r));
             setRows([...map.values()]);
@@ -167,7 +193,7 @@ export default function AdminRegistrationsPage() {
     return rows.filter((r) =>
       [r.instansi, r.pic, r.email, r.wa, r.kota, r.provinsi, r.kodepos, r.alamat]
         .filter(Boolean)
-        .some((x) => x!.toLowerCase().includes(q))
+        .some((x) => (x ?? "").toLowerCase().includes(q))
     );
   }, [rows, query]);
 

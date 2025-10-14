@@ -1,7 +1,12 @@
 /* src/app/globals.css */
+
+@import "leaflet/dist/leaflet.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
 
 :root { --brand: #F97316; --brand2: #CDA434; }
 

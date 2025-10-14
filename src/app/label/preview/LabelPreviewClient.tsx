@@ -6,24 +6,33 @@ import { useSearchParams } from "next/navigation";
 export default function LabelPreviewClient() {
   const sp = useSearchParams();
 
-  const instansi = sp.get("instansi") || "";
-  const pic = sp.get("pic") || "";
-  const jabatan = sp.get("jabatan") || "";
-  const email = sp.get("email") || "";
-  const wa = sp.get("wa") || "";
-  const alamat = sp.get("alamat") || "";
-  const kelurahan = sp.get("kelurahan") || "";
-  const kecamatan = sp.get("kecamatan") || "";
-  const kota = sp.get("kota") || "";
-  const provinsi = sp.get("provinsi") || "";
-  const kodepos = sp.get("kodepos") || "";
-  const catatan = sp.get("catatan") || "";
-  const fullAddress = sp.get("fullAddress") || "";
+  const instansi   = sp.get("instansi")   || "";
+  const pic        = sp.get("pic")        || "";
+  const jabatan    = sp.get("jabatan")    || "";
+  const email      = sp.get("email")      || "";
+  const wa         = sp.get("wa")         || "";
+  const alamat     = sp.get("alamat")     || "";
+  const kelurahan  = sp.get("kelurahan")  || "";
+  const kecamatan  = sp.get("kecamatan")  || "";
+  const kota       = sp.get("kota")       || "";
+  const provinsi   = sp.get("provinsi")   || "";
+  const kodepos    = sp.get("kodepos")    || "";
+  const catatan    = sp.get("catatan")    || "";
+  const fullAddress= sp.get("fullAddress")|| "";
 
-  const mapsUrl = useMemo(
-    () => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`,
-    [fullAddress]
-  );
+  // NEW: dukung koordinat dari form (kalau ada)
+  const lat = sp.get("lat");
+  const lng = sp.get("lng");
+  const hasCoords = lat !== null && lng !== null && lat.trim() !== "" && lng.trim() !== "";
+
+  const mapsUrl = useMemo(() => {
+    if (hasCoords && !Number.isNaN(Number(lat)) && !Number.isNaN(Number(lng))) {
+      // prioritas: koordinat untuk akurasi navigasi
+      return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    }
+    // fallback: alamat lengkap seperti sebelumnya
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`;
+  }, [hasCoords, lat, lng, fullAddress]);
 
   const qrUrl = useMemo(
     () => `https://chart.googleapis.com/chart?chs=260x260&cht=qr&chl=${encodeURIComponent(mapsUrl)}`,
@@ -79,7 +88,10 @@ export default function LabelPreviewClient() {
               </div>
             )}
 
-            <div className="mt-auto pt-2 text-[10px] text-slate-500 break-words">Maps: {fullAddress}</div>
+            <div className="mt-auto pt-2 text-[10px] text-slate-500 break-words">
+              {/* tetap sama: tampilkan alamat; koordinat tidak ditampilkan agar UI tidak berubah */}
+              Maps: {fullAddress}
+            </div>
           </div>
 
           {/* QR */}
