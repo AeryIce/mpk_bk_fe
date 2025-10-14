@@ -1,10 +1,11 @@
+// src/app/admin/registrations/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { NavBar } from "@/src/components/NavBar";
 
 type Registration = {
-  id: string;
+  id: string; // selalu string di UI (coerce dari DB number)
   instansi: string;
   pic: string;
   jabatan?: string;
@@ -18,8 +19,11 @@ type Registration = {
   kodepos?: string;
   catatan?: string;
   createdAt: string; // ISO
+  lat?: number;
+  lng?: number;
 };
 
+// ---- Seed fallback (kalau API gagal) ----
 const seed: Registration[] = [
   {
     id: "RG-0001",
@@ -53,6 +57,7 @@ const seed: Registration[] = [
   },
 ];
 
+// ---- Helpers ----
 function toFullAddress(r: Registration) {
   const segs = [
     r.alamat,
@@ -66,7 +71,11 @@ function toFullAddress(r: Registration) {
   return segs.join(", ");
 }
 
-function toMapsUrl(full: string) {
+function toMapsUrl(r: Registration) {
+  if (typeof r.lat === "number" && typeof r.lng === "number") {
+    return `https://www.google.com/maps/search/?api=1&query=${r.lat},${r.lng}`;
+  }
+  const full = toFullAddress(r);
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(full)}`;
 }
 
@@ -86,6 +95,11 @@ function toLabelURL(r: Registration) {
     kodepos: r.kodepos || "",
     catatan: r.catatan || "",
     fullAddress,
+    lat: r.lat?.toString() ?? "",
+    lng: r.lng?.toString() ?? "",
+    // placeholder tokens (nanti diganti token BE)
+    opsToken: "ops-demo-123",
+    confirmToken: "confirm-demo-123",
   }).toString();
   return `/label/preview?${q}`;
 }
@@ -93,22 +107,58 @@ function toLabelURL(r: Registration) {
 export default function AdminRegistrationsPage() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
-  const [rows, setRows] = useState<Registration[]>(seed);
+  const [rows, setRows] = useState<Registration[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Pull mock submissions dari localStorage (jika kamu nanti tambahkan “Simpan” di /register)
+  // Tarik dari API (fallback ke seed)
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("bk_registrations");
-      if (raw) {
-        const ls: Registration[] = JSON.parse(raw);
-        // Gabungkan unik by email+instansi sederhana
-        const map = new Map<string, Registration>();
-        [...seed, ...ls].forEach((r) => map.set(`${r.instansi}|${r.email}`, r));
-        setRows([...map.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+    const url = `${base}/api/registrations-list`;
+    (async () => {
+      try {
+        const res = await fetch(url, { headers: { Accept: "application/json" } });
+        if (!res.ok) throw new Error("bad");
+        const j = await res.json();
+        // DB shape: id:number, created_at:string, lat/lng optional
+        const mapped: Registration[] = (j.data as any[]).map((d) => ({
+          id: String(d.id),
+          instansi: d.instansi ?? "",
+          pic: d.pic ?? "",
+          jabatan: d.jabatan ?? "",
+          email: d.email ?? "",
+          wa: d.wa ?? "",
+          alamat: d.alamat ?? "",
+          kelurahan: d.kelurahan ?? "",
+          kecamatan: d.kecamatan ?? "",
+          kota: d.kota ?? "",
+          provinsi: d.provinsi ?? "",
+          kodepos: d.kodepos ?? "",
+          catatan: d.catatan ?? "",
+          createdAt: d.created_at ?? new Date().toISOString(),
+          lat: typeof d.lat === "number" ? d.lat : d.lat ? Number(d.lat) : undefined,
+          lng: typeof d.lng === "number" ? d.lng : d.lng ? Number(d.lng) : undefined,
+        }));
+        setRows(mapped);
+      } catch {
+        // fallback ke seed + (opsional) localStorage mock
+        try {
+          const raw = localStorage.getItem("bk_registrations");
+          if (raw) {
+            const ls: Registration[] = JSON.parse(raw);
+            // gabung unik by instansi|email
+            const map = new Map<string, Registration>();
+            [...seed, ...ls].forEach((r) => map.set(`${r.instansi}|${r.email}`, r));
+            setRows([...map.values()]);
+          } else {
+            setRows(seed);
+          }
+        } catch {
+          setRows(seed);
+        }
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      // abaikan
-    }
+    })();
   }, []);
 
   const filtered = useMemo(() => {
@@ -146,6 +196,8 @@ export default function AdminRegistrationsPage() {
       "KodePos",
       "Catatan",
       "CreatedAt",
+      "Lat",
+      "Lng",
     ];
     const lines = list.map((r) =>
       [
@@ -163,6 +215,8 @@ export default function AdminRegistrationsPage() {
         r.kodepos || "",
         (r.catatan || "").replace(/\n/g, " "),
         r.createdAt,
+        r.lat ?? "",
+        r.lng ?? "",
       ]
         .map((v) => `"${String(v).replace(/"/g, '""')}"`)
         .join(",")
@@ -193,14 +247,15 @@ export default function AdminRegistrationsPage() {
         <div>
           <h2 className="text-xl font-semibold text-slate-900">Registrasi Masuk</h2>
           <p className="text-sm text-slate-500">
-            Data dari formulir publik <span className="font-medium">/register</span>. Bisa cari, ekspor CSV, dan cetak label.
+            Data dari formulir publik <span className="font-medium">/pendaftaran</span>. Bisa cari dan ekspor CSV.
           </p>
         </div>
         <div className="flex gap-2">
-          <a href="/register" target="_blank" rel="noreferrer" className="btn btn-ghost">
+          <a href="/pendaftaran" target="_blank" rel="noreferrer" className="btn btn-ghost">
             Buka Form Publik
           </a>
           <button className="btn btn-ghost" onClick={exportCSV}>Export CSV</button>
+          {/* Jika masih mau cetak label admin, biarkan tombol2 di bawah; kalau tidak, hapus dua tombol ini */}
           <button
             className="btn btn-primary disabled:opacity-50"
             onClick={bulkPrint}
@@ -221,7 +276,7 @@ export default function AdminRegistrationsPage() {
             className="w-full sm:w-80 rounded-xl border border-amber-300/60 bg-white/70 px-3 py-2 outline-none focus:ring-2 focus:ring-amber-400"
           />
           <div className="text-sm text-slate-500">
-            {filtered.length} entri{selected.length ? ` · ${selected.length} terpilih` : ""}
+            {loading ? "Memuat…" : `${filtered.length} entri`}{selected.length ? ` · ${selected.length} terpilih` : ""}
           </div>
         </div>
 
@@ -233,7 +288,7 @@ export default function AdminRegistrationsPage() {
                 <th className="py-2 px-2">
                   <input
                     type="checkbox"
-                    checked={selected.length > 0 && selected.length === filtered.length}
+                    checked={filtered.length > 0 && selected.length === filtered.length}
                     onChange={(e) => selectAll(e.target.checked)}
                     aria-label="Pilih semua"
                   />
@@ -246,9 +301,8 @@ export default function AdminRegistrationsPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {filtered.map((r) => {
-                const full = toFullAddress(r);
-                const maps = toMapsUrl(full);
+              {!loading && filtered.map((r) => {
+                const maps = toMapsUrl(r);
                 return (
                   <tr key={r.id} className="align-top">
                     <td className="py-3 px-2">
@@ -261,9 +315,7 @@ export default function AdminRegistrationsPage() {
                     </td>
                     <td className="py-3 px-2">
                       <div className="font-medium">{r.instansi}</div>
-                      {r.jabatan ? (
-                        <div className="text-xs text-slate-500">{r.jabatan}</div>
-                      ) : null}
+                      {r.jabatan ? <div className="text-xs text-slate-500">{r.jabatan}</div> : null}
                     </td>
                     <td className="py-3 px-2">
                       <div className="font-medium">{r.pic}</div>
@@ -280,7 +332,7 @@ export default function AdminRegistrationsPage() {
                       </div>
                     </td>
                     <td className="py-3 px-2 text-xs text-slate-500 tabular-nums">
-                      {new Date(r.createdAt).toLocaleString()}
+                      {r.createdAt ? new Date(r.createdAt).toLocaleString("id-ID") : ""}
                     </td>
                     <td className="py-3 px-2">
                       <div className="flex justify-end gap-2">
@@ -295,11 +347,17 @@ export default function AdminRegistrationsPage() {
                 );
               })}
 
-              {filtered.length === 0 && (
+              {!loading && filtered.length === 0 && (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-slate-500">
-                    Belum ada data. Bagikan link <span className="font-medium">/register</span> untuk mulai menerima registrasi.
+                    Belum ada data. Bagikan link <span className="font-medium">/pendaftaran</span> untuk mulai menerima registrasi.
                   </td>
+                </tr>
+              )}
+
+              {loading && (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-slate-500">Memuat data…</td>
                 </tr>
               )}
             </tbody>
@@ -309,4 +367,3 @@ export default function AdminRegistrationsPage() {
     </div>
   );
 }
-
