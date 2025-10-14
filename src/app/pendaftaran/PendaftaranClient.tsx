@@ -12,6 +12,8 @@ type FormState = {
   catatan?: string;
 };
 
+type NominatimResp = { address?: Record<string, string> | undefined };
+
 const LS_KEY = "bk_register_draft_v1";
 
 export default function PendaftaranClient() {
@@ -23,11 +25,13 @@ export default function PendaftaranClient() {
   const [coords, setCoords] = useState<{ lat?: number; lng?: number }>({});
   const [locLoading, setLocLoading] = useState(false);
   const [locError, setLocError] = useState<string | null>(null);
+  const [geoMsg, setGeoMsg] = useState<string | null>(null); // info reverse geocode
 
   // submit state
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // load draft
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -40,9 +44,70 @@ export default function PendaftaranClient() {
     } catch {}
   }, []);
 
+  // save draft
   useEffect(() => {
     try { localStorage.setItem(LS_KEY, JSON.stringify({ ...f, ...coords })); } catch {}
   }, [f, coords]);
+
+  // helper provinsi (DKI dst.)
+  function normProv(p?: string) {
+    if (!p) return "";
+    if (/jakarta|daerah khusus|dki/i.test(p)) return "DKI Jakarta";
+    return p;
+  }
+
+  // === Reverse geocode: sinkronkan alamat dari titik peta ===
+  useEffect(() => {
+    if (coords.lat === undefined || coords.lng === undefined) return;
+    let ignore = false;
+    setGeoMsg("Mengambil alamat dari peta…");
+
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&zoom=18&lat=${coords.lat}&lon=${coords.lng}`;
+    fetch(url, { headers: { Accept: "application/json" } })
+      .then((r) => r.json() as Promise<NominatimResp>)
+      .then((j) => {
+        if (ignore) return;
+        const a = j.address ?? {};
+
+        // Jalan/nomor: pilih yang paling relevan
+        const jalan = [a.road, a.residential, a.pedestrian, a.footway, a.path, a.house_number]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+
+        // Kelurahan & Kecamatan & Kota (lebih “Indonesia-friendly”)
+        const kel = (a.village || a.hamlet || a.neighbourhood || a.suburb || "") as string;
+
+        // Kota / Kabupaten
+        const kotaGuess = (a.city || a.town || a.municipality || a.county || a.city_district || "") as string;
+
+        // Kecamatan dari beberapa kemungkinan field
+        let kec = (a.subdistrict || a.district || (a.suburb && a.suburb !== kel ? a.suburb : "")) as string;
+        if (!kec && a.city_district && !/jakarta/i.test(a.city_district)) {
+          kec = a.city_district as string;
+        }
+        if (kec && kotaGuess && kec.toLowerCase() === kotaGuess.toLowerCase()) {
+          kec = "";
+        }
+
+        setF((prev) => ({
+          ...prev,
+          alamat: jalan || prev.alamat,
+          kelurahan: kel || prev.kelurahan,
+          kecamatan: kec || prev.kecamatan,
+          kota: kotaGuess || prev.kota,
+          provinsi: normProv((a.state || a.region || a.province || a.state_district) as string) || prev.provinsi,
+          kodepos: (a.postcode as string) || prev.kodepos,
+        }));
+        setGeoMsg("Alamat diisi dari titik peta. Silakan koreksi bila perlu.");
+      })
+      .catch(() => setGeoMsg("Gagal ambil alamat otomatis. Anda bisa isi manual."))
+      .finally(() => {
+        setTimeout(() => setGeoMsg(null), 3000);
+      });
+
+    return () => { ignore = true; };
+  }, [coords.lat, coords.lng]);
 
   const fullAddress = useMemo(() => {
     const segs = [
@@ -114,7 +179,7 @@ export default function PendaftaranClient() {
       });
       if (!res.ok) throw new Error(await res.text());
       setSubmitMsg({ ok: true, text: "Pendaftaran tersimpan. Terima kasih!" });
-      // localStorage.removeItem(LS_KEY); // aktifkan jika ingin kosongkan draft
+      // localStorage.removeItem(LS_KEY); // aktifkan kalau mau kosongkan draft
     } catch {
       setSubmitMsg({ ok: false, text: "Gagal menyimpan. Coba lagi." });
     } finally {
@@ -161,13 +226,8 @@ export default function PendaftaranClient() {
               <Field label="Catatan untuk kurir (opsional)" value={f.catatan || ""} onChange={(v) => onChange("catatan", v)} />
             </div>
 
-            {/* tombol */}
             <div className="mt-5 flex flex-col sm:flex-row flex-wrap gap-2">
-              <button
-                type="button"
-                className="btn btn-ghost w-full sm:w-auto"
-                onClick={() => localStorage.removeItem(LS_KEY)}
-              >
+              <button type="button" className="btn btn-ghost w-full sm:w-auto" onClick={() => localStorage.removeItem(LS_KEY)}>
                 Hapus Draft
               </button>
 
@@ -197,7 +257,7 @@ export default function PendaftaranClient() {
                 <button
                   type="button"
                   onClick={useCurrentLocation}
-                  className="btn btn-ghost text-xs w-auto"
+                  className="btn btn-primary text-xs w-auto rounded-full shadow-sm hover:shadow-md"
                   disabled={locLoading}
                   title="Gunakan lokasi perangkat"
                 >
@@ -208,6 +268,7 @@ export default function PendaftaranClient() {
               <MapPicker lat={coords.lat} lng={coords.lng} onChange={setCoords} />
 
               {locError && <div className="mt-2 text-xs text-rose-600">{locError}</div>}
+              {geoMsg && <div className="mt-2 text-xs text-amber-600">{geoMsg}</div>}
 
               <div className="mt-2 text-xs text-slate-600">
                 Titik: {coords.lat !== undefined ? `${coords.lat.toFixed(5)}, ${coords.lng?.toFixed(5)}` : "Klik peta untuk memilih"}
