@@ -1,24 +1,56 @@
 // src/components/AdminGate.tsx
 "use client";
-import { useEffect, useState } from "react";
+
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+
 type Role = "sponsor" | "admin" | "superadmin";
 
-export default function AdminGate({ children, allow = ["admin","superadmin"] as Role[] }) {
+interface Props {
+  children: ReactNode;
+  allow?: Role[];
+}
+
+const DEFAULT_ALLOW: Role[] = ["admin", "superadmin"];
+
+export default function AdminGate({ children, allow = DEFAULT_ALLOW }: Props) {
   const [ok, setOk] = useState<boolean | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
-    if (!token) { router.replace("/login"); return; }
+
+    // kalau nggak ada token, anggap tidak berwenang (tanpa redirect)
+    if (!token) {
+      setOk(false);
+      return;
+    }
+
     const base = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-    fetch(`${base}/api/me`, { headers: { Accept: "application/json", Authorization: `Bearer ${token}` }})
-      .then(r => r.json())
-      .then((d) => setOk(allow.includes((d?.user?.role || "sponsor") as Role)))
-      .catch(() => router.replace("/login"));
-  }, [router, allow]);
+    fetch(`${base}/api/me`, {
+      headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(await r.text());
+        return r.json() as Promise<{ ok: boolean; user?: { role?: Role } }>;
+      })
+      .then((d) => {
+        const role = d.user?.role ?? "sponsor";
+        setOk(allow.includes(role));
+      })
+      .catch(() => setOk(false));
+  }, [allow]);
 
   if (ok === null) return <div className="p-6 text-sm text-slate-500">Memuat akses…</div>;
-  if (!ok) return <div className="p-6">Tidak berwenang. <a className="underline text-[color:var(--brand)]" href="/login">Login</a></div>;
+  if (!ok)
+    return (
+      <div className="p-6">
+        Tidak berwenang.{" "}
+        <a className="underline text-[color:var(--brand)]" href="/register">
+          Ke Form Publik
+        </a>
+      </div>
+    );
+
   return <>{children}</>;
 }
