@@ -27,7 +27,7 @@ type SekolahItem = {
 };
 type PerusahaanItem = { id: string; name: string };
 
-type Option = { value: string; label: string; meta?: any };
+type Option = { value: string; label: string; meta?: unknown };
 
 const LS_KEY = "bk_register_draft_v1";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
@@ -41,13 +41,18 @@ const emptyForm: FormState = {
   catatan: "",
 };
 
-function debounce<T extends (...args: any[]) => void>(fn: T, ms = DEBOUNCE_MS) {
-  let t: any;
-  return (...args: Parameters<T>) => {
+// Debounce yang kompatibel async + tanpa any
+function debounce<Args extends unknown[]>(
+  fn: (...args: Args) => unknown | Promise<unknown>,
+  ms = DEBOUNCE_MS
+) {
+  let t: ReturnType<typeof setTimeout> | undefined;
+  return (...args: Args): void => {
     if (t) clearTimeout(t);
-    t = setTimeout(() => fn(...args), ms);
+    t = setTimeout(() => { void fn(...args); }, ms);
   };
 }
+
 const iIncludes = (a: string, b: string) => a.toLowerCase().includes(b.toLowerCase());
 const eqi = (a?: string | null, b?: string | null) =>
   !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -160,7 +165,7 @@ function AutoComplete({
   const abortRef = useRef<AbortController | null>(null);
   const [hi, setHi] = useState(-1);
 
-  const runFetch = useMemo(
+  const runFetch = useMemo<(qq: string) => void>(
     () =>
       debounce(async (qq: string) => {
         if (abortRef.current) abortRef.current.abort();
@@ -442,6 +447,7 @@ export default function PendaftaranClient() {
           {/* === KIRI === */}
           <div className="relative">
             <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/brand/LogoMPK50th.png" alt="" className="max-w-[65%]" style={{ opacity: 0.06, filter: "blur(0.8px)" }} />
             </div>
 

@@ -34,6 +34,7 @@ export default function TopBanner() {
             >
           {/* Gambar vertikal → rotate 90°.
              Height = lebar container * scale supaya lebar pas, tanpa bablas. */}
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src="/brand/Logo MPK-KAJ 50 Tahun Horisontal.png"
             alt="MPK-KAJ 50 Tahun"
