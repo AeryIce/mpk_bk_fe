@@ -41,15 +41,15 @@ const emptyForm: FormState = {
   catatan: "",
 };
 
-// Debounce yang kompatibel async + tanpa any
-function debounce<Args extends unknown[]>(
-  fn: (...args: Args) => unknown | Promise<unknown>,
+// ✅ khusus string → mencegah error generic/unknown[]
+function debounceString(
+  fn: (q: string) => void | Promise<void>,
   ms = DEBOUNCE_MS
 ) {
   let t: ReturnType<typeof setTimeout> | undefined;
-  return (...args: Args): void => {
+  return (q: string) => {
     if (t) clearTimeout(t);
-    t = setTimeout(() => { void fn(...args); }, ms);
+    t = setTimeout(() => { void fn(q); }, ms);
   };
 }
 
@@ -60,7 +60,7 @@ const pickCity = (s: SekolahItem) =>
   (s.kabupaten?.trim() || s.kota?.trim() || [s.kecamatan, s.kabupaten].filter(Boolean).join("/") || "");
 
 // ===================== API helpers =====================
-// — tetap untuk path "Yayasan" biasa (tanpa filter jenjang)
+// — basic yayasan (tab Yayasan)
 async function fetchYayasan(q: string, limit = 50, signal?: AbortSignal): Promise<YayasanItem[]> {
   const url = `${API_BASE}/api/master/yayasan?q=${encodeURIComponent(q)}&limit=${limit}`;
   const res = await fetch(url, { headers: { Accept: "application/json" }, signal });
@@ -68,17 +68,11 @@ async function fetchYayasan(q: string, limit = 50, signal?: AbortSignal): Promis
   return res.json() as Promise<YayasanItem[]>;
 }
 
-// — versi BE-filter (untuk path "Sekolah")
-async function fetchYayasanByJenjang(
-  jenjang: string,
-  q = "",
-  limit = 200,
-  signal?: AbortSignal
-): Promise<YayasanItem[]> {
+// — versi BE-scope (path Sekolah): scope by jenjang; pencarian (q) difilter di FE (case-insensitive)
+async function fetchYayasanByJenjang(jenjang: string, signal?: AbortSignal): Promise<YayasanItem[]> {
   const sp = new URLSearchParams();
   if (jenjang) sp.set("jenjang", jenjang);
-  if (q) sp.set("q", q);
-  sp.set("limit", String(limit));
+  sp.set("limit", "200");
   const url = `${API_BASE}/api/master/yayasan?${sp.toString()}`;
   const res = await fetch(url, { headers: { Accept: "application/json" }, signal });
   if (!res.ok) throw new Error("Gagal memuat yayasan");
@@ -103,7 +97,7 @@ async function fetchSekolah(
   const sp = new URLSearchParams({ yayasanId: params.yayasanId });
   if (params.jenjang) sp.set("jenjang", params.jenjang);
   if (params.kota) sp.set("kota", params.kota);
-  if (params.q) sp.set("q", params.q);
+  // q difilter di FE supaya insensitive
   sp.set("limit", String(params.limit ?? 500));
   const url = `${API_BASE}/api/master/sekolah?${sp.toString()}`;
 
@@ -113,7 +107,6 @@ async function fetchSekolah(
     if (res.ok) raw = (await res.json()) as SekolahItem[];
   } catch { /* noop */ }
 
-  // FE guard (boleh tetap ada, tapi BE akan handle)
   let data = raw;
   if (params.jenjang) data = data.filter((s) => eqi(s.jenjang ?? "", params.jenjang ?? ""));
   if (params.kota)   data = data.filter((s) => eqi(pickCity(s), params.kota ?? ""));
@@ -138,7 +131,7 @@ function AutoComplete({
   label,
   value,
   onChange,
-  onSelectOption, // ambil id & label saat klik/enter
+  onSelectOption,
   fetcher,
   placeholder,
   required,
@@ -165,9 +158,10 @@ function AutoComplete({
   const abortRef = useRef<AbortController | null>(null);
   const [hi, setHi] = useState(-1);
 
-  const runFetch = useMemo<(qq: string) => void>(
+  // ✅ pakai debounceString supaya typed sebagai (q: string) => void
+  const runFetch = useMemo(
     () =>
-      debounce(async (qq: string) => {
+      debounceString(async (qq) => {
         if (abortRef.current) abortRef.current.abort();
         const ctl = new AbortController();
         abortRef.current = ctl;
@@ -181,7 +175,7 @@ function AutoComplete({
         } finally {
           setLoading(false);
         }
-      }),
+      }, DEBOUNCE_MS),
     [fetcher]
   );
 
@@ -203,6 +197,8 @@ function AutoComplete({
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
+
+  const showEmpty = !loading && !err && list.length === 0 && q.trim() !== "";
 
   return (
     <label className="block relative" ref={acRef}>
@@ -235,9 +231,7 @@ function AutoComplete({
         <div className="absolute z-20 mt-1 w-full rounded-xl border border-amber-300/60 bg-white shadow-lg max-h-72 overflow-auto">
           {loading && <div className="px-3 py-2 text-xs text-slate-500">Memuat…</div>}
           {err && <div className="px-3 py-2 text-xs text-rose-600">{err}</div>}
-          {!loading && !err && list.length === 0 && (
-            <div className="px-3 py-2 text-xs text-slate-500">Tidak ada saran</div>
-          )}
+          {showEmpty && <div className="px-3 py-2 text-xs text-slate-500">Tidak ada saran</div>}
           {!loading && !err && list.map((opt, idx) => (
             <div
               key={opt.value + idx}
@@ -377,7 +371,7 @@ export default function PendaftaranClient() {
     }
   }, [path]);
 
-  // Hitung apakah ada daftar kota (agar field Kota opsional otomatis) — dari BE
+  // Hitung apakah ada daftar kota (agar field Kota opsional otomatis)
   useEffect(() => {
     let ignore = false;
     async function checkCities() {
@@ -412,10 +406,7 @@ export default function PendaftaranClient() {
           lat: coords.lat ?? null,
           lng: coords.lng ?? null,
           catatan: f.catatan?.trim() || null,
-          // meta opsional — tidak wajib dipakai BE
-          meta: {
-            path, jenjang, yayasanId, yayasanLabel, kotaOpt, sekolahId,
-          },
+          meta: { path, jenjang, yayasanId, yayasanLabel, kotaOpt, sekolahId },
         }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -507,8 +498,9 @@ export default function PendaftaranClient() {
                         onChange("instansi", opt.label);
                       }}
                       fetcher={async (q, signal) => {
-                        const arr = await fetchYayasan(q, q ? 100 : 200, signal); // tampil banyak saat fokus
-                        return arr.map((y) => ({ value: y.id, label: y.name }));
+                        const arr = await fetchYayasan(q, q ? 100 : 200, signal);
+                        const filtered = q ? arr.filter((y) => iIncludes(y.name, q)) : arr;
+                        return filtered.map((y) => ({ value: y.id, label: y.name }));
                       }}
                       placeholder="Cari dan pilih yayasan…"
                       required
@@ -550,8 +542,9 @@ export default function PendaftaranClient() {
                       onSelectOption={(opt) => { setYayasanId(opt.value); setYayasanLabel(opt.label); setKotaOpt(""); setSekolahId(""); }}
                       fetcher={async (q, signal) => {
                         if (!jenjang) return [];
-                        const arr = await fetchYayasanByJenjang(jenjang, q, q ? 120 : 200, signal);
-                        return arr.map((y) => ({ value: y.id, label: y.name }));
+                        const arr = await fetchYayasanByJenjang(jenjang, signal);
+                        const filtered = q ? arr.filter((y) => iIncludes(y.name, q)) : arr;
+                        return filtered.map((y) => ({ value: y.id, label: y.name }));
                       }}
                       placeholder={!jenjang ? "Pilih jenjang dulu" : "Cari yayasan…"}
                       required
